@@ -70,3 +70,46 @@ self.addEventListener('message', (event) => {
 });
 
 // Any other custom service worker logic can go here.
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+    caches.open('my-app-cache').then(function(cache) {
+      return cache.addAll([
+        "https://jsonplaceholder.typicode.com/todos",
+        // Agregar aquí cualquier otro recurso que se quiera cachear
+      ]);
+    })
+  );
+});
+
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.match(event.request).then(function(response) {
+      // Si el recurso está en caché, devolver
+      if (response) {
+        return response;
+      }
+      // Si el recurso no está en caché, obtener de la red y agregar a caché
+      return fetch(event.request).then(function(response) {
+        return caches.open('my-app-cache').then(function(cache) {
+          cache.put(event.request, response.clone());
+          return response;
+        });
+      });
+    })
+  );
+});
+
+self.addEventListener('activate', function(event) {
+  // Limpiar caché antigua
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheName !== 'my-app-cache') {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
